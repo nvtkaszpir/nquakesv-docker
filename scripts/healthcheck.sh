@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PORT=$1
+
 error() {
   echo "ERROR: $1"
   exit 1

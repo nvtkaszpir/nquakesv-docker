@@ -1,43 +1,46 @@
-FROM ubuntu:18.04 as build
-ARG DEBIAN_FRONTEND=noninteractive
-WORKDIR /build
+# notice that 22.04 has some issues on older docker hosts, so we stick to older version for now
+FROM ubuntu:20.04 as run
 
 # Install prerequisites
-RUN apt-get update && apt-get install -y --no-install-recommends apt-utils \
-  && apt-get install -y curl gcc git libc6-dev make meson pkg-config
-
-# Build mvdsv
-RUN git clone https://github.com/deurk/mvdsv.git && cd mvdsv \
-  && ./configure && make
-
-# Build ktx
-RUN git clone https://github.com/deurk/ktx.git && cd ktx \
-  && meson build && ninja -C build
-
-FROM ubuntu:18.04 as run
-ARG DEBIAN_FRONTEND=noninteractive
-WORKDIR /nquake
-
-# Install prerequisites
-RUN apt-get update && apt-get install -y --no-install-recommends apt-utils \
-  && apt-get install -y curl unzip wget dos2unix gettext dnsutils qstat \
+# notice that screen and sudo are because nquake installer needs them
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    apt-utils \
+    ca-certificates \
+    curl \
+    unzip \
+    zip \
+    wget \
+    dos2unix \
+    gettext \
+    dnsutils \
+    qstat \
+    screen \
+    sudo \
+    gosu \
   && rm -rf /var/lib/apt/lists/*
 
+RUN useradd -rm -d /nquake -s /bin/bash -u 1001 qw
+ENV HOME=/nquake/
+COPY .wgetrc /nquake/.wgetrc
+# install and run only one server (-p 1)
+RUN curl -o /tmp/install_nquakesv.sh https://raw.githubusercontent.com/nQuake/server-linux/master/src/install_nquakesv.sh \
+    && chmod +x /tmp/install_nquakesv.sh \
+    && /tmp/install_nquakesv.sh -n -p=1 /nquake
+
 # Copy files
-COPY files .
-COPY --from=build /build/mvdsv/mvdsv /nquake/mvdsv
-COPY --from=build /build/ktx/build/qwprogs.so /nquake/ktx/qwprogs.so
 COPY scripts/healthcheck.sh /healthcheck.sh
 COPY scripts/entrypoint.sh /entrypoint.sh
 
-# Cleanup
-RUN find . -type f -print0 | xargs -0 dos2unix -q \
-  && find . -type f -exec chmod -f 644 "{}" \; \
-  && find . -type d -exec chmod -f 755 "{}" \; \
-  && chmod +x mvdsv ktx/mvdfinish.qws ktx/qwprogs.so
+RUN find /nquake -type f -print0 | xargs -0 dos2unix -q \
+    && chown -R qw:qw /nquake
 
-VOLUME /nquake/logs
-VOLUME /nquake/media
-VOLUME /nquake/demos
+# do not run as root
+USER qw
+WORKDIR /nquake
 
+USER qw
 ENTRYPOINT ["/entrypoint.sh"]
+# change "server" to something like: "qtv", "qwfwd", "server"
+CMD ["server"]
+
