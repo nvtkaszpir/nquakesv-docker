@@ -1,4 +1,4 @@
-#!/bin/bash
+A#!/bin/bash
 
 #set -e
 
@@ -56,18 +56,21 @@ generate_configs
 
 # notice, we spawn only one server in container
 if [ "$1" = 'mvdsv' ]; then
+    shift
     : ${PORT:-"28501"}
-    exec  ./mvdsv -port ${PORT} -game ktx +exec port_${PORT}.cfg &
+    exec  ./mvdsv -port ${PORT} -game ktx +exec port_${PORT}.cfg $@ &
 fi
 
 if [ "$1" = 'qtv' ]; then
+    shift
     cd $(cat ~/.nquakesv/install_dir)/qtv/
-    exec ./qtv.bin +exec qtv.cfg &
+    exec ./qtv.bin +exec qtv.cfg ${EXTRA_CMD_ARGS} $@ &
 fi
 
 if [ "$1" = 'qwfwd' ]; then
+    shift
     cd $(cat ~/.nquakesv/install_dir)/qwfwd/
-    exec ./qwfwd.bin &
+    exec ./qwfwd.bin ${EXTRA_CMD_ARGS} $@ &
 fi
 
 pid="$!"
