@@ -18,20 +18,28 @@ RUN apt-get update \
     screen \
     sudo \
     gosu \
+    vim \
+    silversearcher-ag \
+    mc \
+    parallel \
+    nano \
   && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -rm -d /nquake -s /bin/bash -u 1001 qw
 ENV HOME=/nquake/
 COPY .wgetrc /nquake/.wgetrc
 # install and run only one server (-p 1)
+# also wipe out config and detected address when runing docker build
 RUN curl -o /tmp/install_nquakesv.sh https://raw.githubusercontent.com/nQuake/server-linux/master/src/install_nquakesv.sh \
     && chmod +x /tmp/install_nquakesv.sh \
-    && /tmp/install_nquakesv.sh -n -p=1 /nquake
+    && /tmp/install_nquakesv.sh -n -p=1 /nquake \
+    && echo "" > ~/.nquakesv/config \
+    && echo "" > ~/.nquakesv/ip
 
-# Copy files
 COPY scripts/healthcheck.sh /healthcheck.sh
 COPY scripts/entrypoint.sh /entrypoint.sh
 
+# fix file newline endings
 RUN find /nquake -type f -print0 | xargs -0 dos2unix -q \
     && chown -R qw:qw /nquake
 
@@ -41,6 +49,5 @@ WORKDIR /nquake
 
 USER qw
 ENTRYPOINT ["/entrypoint.sh"]
-# change "server" to something like: "qtv", "qwfwd", "server"
+# change "server" to something like: "qtv", "qwfwd", "mvdsv"
 CMD ["server"]
-
